@@ -1,22 +1,52 @@
+from .models import Cat, Owner, Achievement, AchievementCat, CHOICES
+from rest_framework.response import Response
+from rest_framework.decorators import action
 from rest_framework import serializers
+import datetime as dt
+import webcolors
 
-from .models import Cat, Owner, Achievement, AchievementCat
+from djoser.serializers import UserSerializer
+
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
+
+class CustomUserSerializer(UserSerializer):
+    class Meta:
+        model = User
+        fields = ('email', 'id', 'username', 'first_name', 'last_name')
 
 
 class AchievementSerializer(serializers.ModelSerializer):
+    achievement_name = serializers.CharField(source='name')
 
     class Meta:
         model = Achievement
-        fields = ('id', 'name')
+        fields = ('id', 'achievement_name')
 
 
-class CatSerializer(serializers.ModelSerializer):
-    owner = serializers.StringRelatedField(read_only=True)
-    achievements = AchievementSerializer(many=True, required=False)
+class CatListSerializer(serializers.ModelSerializer):
+    color = serializers.ChoiceField(choices=CHOICES)
 
     class Meta:
         model = Cat
-        fields = ('id', 'name', 'color', 'birth_year', 'owner', 'achievements')
+        fields = ('id', 'name', 'color')
+
+
+class CatSerializer(serializers.ModelSerializer):
+    # owner = serializers.StringRelatedField(read_only=True)
+    achievements = AchievementSerializer(many=True, required=False)
+    age = serializers.SerializerMethodField()
+    color = serializers.ChoiceField(choices=CHOICES)
+
+    class Meta:
+        model = Cat
+        fields = ('id', 'name', 'color', 'birth_year',
+                  'owner', 'achievements', 'age')
+
+    def get_age(self, obj):
+        return dt.datetime.now().year - obj.birth_year
 
     def create(self, validated_data):
         # Если в исходном запросе не было поля achievements
